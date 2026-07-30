@@ -1,0 +1,410 @@
+"""Validate the propagation matrix of one constant-index temporal layer.
+
+The analytical propagation matrix is checked against a direct numerical
+integration of the Maxwell first-order system.  This file intentionally keeps
+the single-layer problem independent of the later chiral-PTC constraint
+``tau / n = constant``.
+"""
+
+from pathlib import Path
+
+import matplotlib
+
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+import numpy as np
+from scipy.integrate import solve_ivp
+
+
+C0 = 299_792_458.0
+ETA0 = 376.730_313_668
+
+
+def _validate_layer_parameters(k, n_j, tau_j, c, eta_0):
+    """Reject non-physical or non-finite layer parameters."""
+    values = {
+        "k": k,
+        "n_j": n_j,
+        "tau_j": tau_j,
+        "c": c,
+        "eta_0": eta_0,
+    }
+    for name, value in values.items():
+        if not np.isfinite(value):
+            raise ValueError(f"{name} must be finite.")
+    if n_j <= 0:
+        raise ValueError("Refractive index n_j must be positive.")
+    if c <= 0:
+        raise ValueError("Vacuum light speed c must be positive.")
+    if eta_0 <= 0:
+        raise ValueError("Vacuum impedance eta_0 must be positive.")
+
+
+def theta_j(k, n_j, tau_j, c=C0):
+    """Return the temporal-layer phase theta = k*c*tau/n."""
+    _validate_layer_parameters(k, n_j, tau_j, c, ETA0)
+    return k * c * tau_j / n_j
+
+
+def P_j(k, n_j, tau_j, c=C0, eta_0=ETA0):
+    """Return the forward-time propagation matrix in the (D, B) basis."""
+    _validate_layer_parameters(k, n_j, tau_j, c, eta_0)
+    theta = k * c * tau_j / n_j
+    cos_theta = np.cos(theta)
+    sin_theta = np.sin(theta)
+    return np.array(
+        [
+            [cos_theta, -1j * (n_j / eta_0) * sin_theta],
+            [-1j * (eta_0 / n_j) * sin_theta, cos_theta],
+        ],
+        dtype=complex,
+    )
+
+
+def next_layer(D_0, B_0, k, n_j, tau_j, c=C0, eta_0=ETA0):
+    """Propagate one state through one constant-index temporal layer."""
+    state_0 = np.asarray([D_0, B_0], dtype=complex)
+    return tuple(P_j(k, n_j, tau_j, c, eta_0) @ state_0)
+
+
+def multi_layer(D_0, B_0, layers, k, c=C0, eta_0=ETA0):
+    """Propagate through layers listed chronologically as (n_j, tau_j)."""
+    state = np.asarray([D_0, B_0], dtype=complex)
+    for n_j, tau_j in layers:
+        state = P_j(k, n_j, tau_j, c, eta_0) @ state
+    return tuple(state)
+
+
+def maxwell_generator(k, n_j, c=C0, eta_0=ETA0):
+    """Return A in d(D, B)^T/dt = A(D, B)^T.
+
+    The identities mu_0 = eta_0/c and epsilon_0 = 1/(eta_0*c) give
+
+        dD/dt = -i*k*(c/eta_0)*B
+        dB/dt = -i*k*(eta_0*c/n_j**2)*D.
+    """
+    _validate_layer_parameters(k, n_j, 0.0, c, eta_0)
+    return -1j * k * np.array(
+        [
+            [0.0, c / eta_0],
+            [eta_0 * c / n_j**2, 0.0],
+        ],
+        dtype=complex,
+    )
+
+
+def ode_trajectory(
+    D_0,
+    B_0,
+    k,
+    n_j,
+    times,
+    c=C0,
+    eta_0=ETA0,
+    rtol=1e-11,
+    atol=1e-13,
+):
+    """Integrate the Maxwell ODE once and return states at all requested times."""
+    times = np.asarray(times, dtype=float)
+    if times.ndim != 1 or times.size == 0:
+        raise ValueError("times must be a non-empty one-dimensional array.")
+    if not np.all(np.isfinite(times)):
+        raise ValueError("times must contain only finite values.")
+    if times[0] != 0.0:
+        raise ValueError("times must start at 0.")
+    if np.any(np.diff(times) < 0.0):
+        raise ValueError("times must be non-decreasing.")
+
+    state_0 = np.asarray([D_0, B_0], dtype=complex)
+    if times[-1] == 0.0:
+        return np.repeat(state_0[:, None], times.size, axis=1)
+
+    generator = maxwell_generator(k, n_j, c, eta_0)
+    solution = solve_ivp(
+        lambda _time, state: generator @ state,
+        (0.0, float(times[-1])),
+        state_0,
+        method="DOP853",
+        t_eval=times,
+        rtol=rtol,
+        atol=atol,
+    )
+    if not solution.success:
+        raise RuntimeError(f"ODE solve failed: {solution.message}")
+    return np.asarray(solution.y, dtype=complex)
+
+
+def next_layer_ode(
+    D_0,
+    B_0,
+    k,
+    n_j,
+    tau_j,
+    c=C0,
+    eta_0=ETA0,
+    rtol=1e-11,
+    atol=1e-13,
+):
+    """Integrate the Maxwell ODE to the end of one temporal layer."""
+    if tau_j < 0:
+        raise ValueError("next_layer_ode expects a non-negative tau_j.")
+    states = ode_trajectory(
+        D_0,
+        B_0,
+        k,
+        n_j,
+        np.array([0.0, tau_j]),
+        c,
+        eta_0,
+        rtol,
+        atol,
+    )
+    return tuple(states[:, -1])
+
+
+def matrix_trajectory(D_0, B_0, k, n_j, times, c=C0, eta_0=ETA0):
+    """Evaluate the analytical propagation matrix at requested times."""
+    state_0 = np.asarray([D_0, B_0], dtype=complex)
+    return np.column_stack(
+        [P_j(k, n_j, time, c, eta_0) @ state_0 for time in times]
+    )
+
+
+def normalized_states(states, n_j, eta_0=ETA0):
+    """Scale B so the two state components have comparable dimensions."""
+    states = np.asarray(states, dtype=complex)
+    normalized = states.copy()
+    normalized[1] *= n_j / eta_0
+    return normalized
+
+
+def state_relative_errors(matrix_states, ode_states, n_j, eta_0=ETA0):
+    """Return a stable relative error for the complete normalized state."""
+    matrix_normalized = normalized_states(matrix_states, n_j, eta_0)
+    ode_normalized = normalized_states(ode_states, n_j, eta_0)
+    differences = np.linalg.norm(matrix_normalized - ode_normalized, axis=0)
+    reference_norms = np.linalg.norm(ode_normalized, axis=0)
+    initial_scale = max(float(reference_norms[0]), 1.0)
+    denominator_floor = np.finfo(float).eps * initial_scale
+    return differences / np.maximum(reference_norms, denominator_floor)
+
+
+def compare_methods(
+    D_0,
+    B_0,
+    k,
+    n_j,
+    tau_j,
+    c=C0,
+    eta_0=ETA0,
+    num_points=200,
+):
+    """Compare analytical and ODE trajectories throughout one layer."""
+    if tau_j < 0:
+        raise ValueError("compare_methods expects a non-negative tau_j.")
+    if num_points < 2:
+        raise ValueError("num_points must be at least 2.")
+
+    times = np.linspace(0.0, tau_j, num_points)
+    matrix_states = matrix_trajectory(
+        D_0, B_0, k, n_j, times, c, eta_0
+    )
+    ode_states = ode_trajectory(
+        D_0, B_0, k, n_j, times, c, eta_0
+    )
+    relative_errors = state_relative_errors(
+        matrix_states, ode_states, n_j, eta_0
+    )
+    return times, matrix_states, ode_states, relative_errors
+
+
+def regression_checks(
+    D_0,
+    B_0,
+    k,
+    n_j,
+    tau_j,
+    c=C0,
+    eta_0=ETA0,
+    num_points=200,
+):
+    """Run algebraic, composition, and independent ODE checks."""
+    if tau_j <= 0:
+        raise ValueError("regression_checks expects a positive tau_j.")
+
+    propagator = P_j(k, n_j, tau_j, c, eta_0)
+    inverse_propagator = P_j(k, n_j, -tau_j, c, eta_0)
+    first_duration = 0.37 * tau_j
+    second_duration = tau_j - first_duration
+    merged = (
+        P_j(k, n_j, second_duration, c, eta_0)
+        @ P_j(k, n_j, first_duration, c, eta_0)
+    )
+
+    _, _, _, relative_errors = compare_methods(
+        D_0,
+        B_0,
+        k,
+        n_j,
+        tau_j,
+        c,
+        eta_0,
+        num_points,
+    )
+
+    metrics = {
+        "determinant_error": float(abs(np.linalg.det(propagator) - 1.0)),
+        "inverse_error": float(
+            np.linalg.norm(
+                inverse_propagator @ propagator - np.eye(2),
+                ord="fro",
+            )
+        ),
+        "homogeneous_merge_error": float(
+            np.linalg.norm(merged - propagator, ord="fro")
+        ),
+        "max_ode_relative_error": float(np.max(relative_errors)),
+    }
+    tolerances = {
+        "determinant_error": 1e-12,
+        "inverse_error": 1e-12,
+        "homogeneous_merge_error": 1e-12,
+        "max_ode_relative_error": 1e-9,
+    }
+    passed = {
+        name: metrics[name] <= tolerances[name] for name in metrics
+    }
+    return metrics, tolerances, passed
+
+
+def plot_results(
+    D_0,
+    B_0,
+    k,
+    n_j,
+    tau_j,
+    c=C0,
+    eta_0=ETA0,
+    num_points=200,
+    output_path=None,
+):
+    """Save matrix/ODE trajectory and state-error comparison."""
+    times, matrix_states, ode_states, relative_errors = compare_methods(
+        D_0,
+        B_0,
+        k,
+        n_j,
+        tau_j,
+        c,
+        eta_0,
+        num_points,
+    )
+    matrix_normalized = normalized_states(matrix_states, n_j, eta_0)
+    ode_normalized = normalized_states(ode_states, n_j, eta_0)
+
+    if output_path is None:
+        output_path = Path(__file__).with_name(
+            "transition_matrix_validation.png"
+        )
+    else:
+        output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    normalized_time = times / tau_j if tau_j > 0 else times
+    figure, axes = plt.subplots(3, 1, figsize=(10, 9), sharex=True)
+
+    axes[0].plot(
+        normalized_time,
+        np.abs(matrix_normalized[0]),
+        label="|D|, matrix",
+    )
+    axes[0].plot(
+        normalized_time,
+        np.abs(ode_normalized[0]),
+        "--",
+        label="|D|, ODE",
+    )
+    axes[0].set_ylabel("|D|")
+    axes[0].set_title("Single temporal-layer propagation")
+    axes[0].legend()
+    axes[0].grid(alpha=0.25)
+
+    axes[1].plot(
+        normalized_time,
+        np.abs(matrix_normalized[1]),
+        label=r"$|nB/\eta_0|$, matrix",
+    )
+    axes[1].plot(
+        normalized_time,
+        np.abs(ode_normalized[1]),
+        "--",
+        label=r"$|nB/\eta_0|$, ODE",
+    )
+    axes[1].set_ylabel(r"$|nB/\eta_0|$")
+    axes[1].legend()
+    axes[1].grid(alpha=0.25)
+
+    # A machine-epsilon floor keeps the log plot readable at t=0, where the
+    # two methods use exactly the same initial state and the error is zero.
+    positive_errors = np.maximum(relative_errors, np.finfo(float).eps)
+    axes[2].semilogy(
+        normalized_time,
+        positive_errors,
+        color="tab:purple",
+        label="normalized-state relative error",
+    )
+    axes[2].set_xlabel(r"Normalized time $t/\tau_j$")
+    axes[2].set_ylabel("Relative error")
+    axes[2].legend()
+    axes[2].grid(alpha=0.25, which="both")
+
+    figure.tight_layout()
+    figure.savefig(output_path, dpi=180, bbox_inches="tight")
+    plt.close(figure)
+    return output_path
+
+
+def main():
+    """Run one visible example and fail if a regression check does not pass."""
+    wavelength = 500e-9
+    k = 2.0 * np.pi / wavelength
+    n_j = 1.5
+    tau_j = 1e-15
+
+    # Choose comparable normalized components: D and n*B/eta_0.
+    D_0 = 1.0 + 0.2j
+    B_0 = (ETA0 / n_j) * (0.35 - 0.15j)
+
+    metrics, tolerances, passed = regression_checks(
+        D_0,
+        B_0,
+        k,
+        n_j,
+        tau_j,
+    )
+    output_path = plot_results(
+        D_0,
+        B_0,
+        k,
+        n_j,
+        tau_j,
+    )
+
+    print("Single-layer propagation-matrix validation")
+    for name, value in metrics.items():
+        status = "PASS" if passed[name] else "FAIL"
+        print(
+            f"  {status:4s}  {name}: {value:.3e} "
+            f"(tolerance {tolerances[name]:.1e})"
+        )
+    print(f"  Figure: {output_path}")
+
+    failed = [name for name, status in passed.items() if not status]
+    if failed:
+        raise SystemExit(
+            "Regression validation failed: " + ", ".join(failed)
+        )
+
+
+if __name__ == "__main__":
+    main()
