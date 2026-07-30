@@ -1,0 +1,63 @@
+# Obsidian per-device state and downloaded assets
+.obsidian/workspace.json
+.obsidian/workspace-mobile.json
+.obsidian/cache/
+.obsidian/themes/
+.obsidian/plugins/
+.obsidian/sync.json
+.trash/
+
+# OS and editor files
+.DS_Store
+Thumbs.db
+Desktop.ini
+*.swp
+*.swo
+*~
+~$*
+
+# Local secrets and environment overrides
+.env
+.env.*
+!.env.example
+secrets.*
+
+# Python environments and caches
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.ipynb_checkpoints/
+
+# MATLAB generated files
+*.asv
+slprj/
+codegen/
+*.mexw32
+*.mexw64
+
+# Build and package outputs
+build/
+dist/
+*.egg-info/
+
+# Generated simulation data and transient outputs
+04-仿真/data/
+04-仿真/output/
+04-仿真/outputs/
+04-仿真/logs/
+05-结果/data/
+05-结果/raw/
+*.log
+*.tmp
+*.bak
+
+# Local migration and scratch directories
+tmp/
+scratch/

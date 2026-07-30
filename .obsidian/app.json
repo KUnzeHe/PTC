@@ -1,0 +1,13 @@
+{
+  "attachmentFolderPath": "03-文献/附件",
+  "newFileLocation": "folder",
+  "newFileFolderPath": "06-实验记录",
+  "useMarkdownLinks": false,
+  "alwaysUpdateLinks": true,
+  "showUnsupportedFiles": true,
+  "userIgnoreFilters": [
+    "tmp/",
+    ".agents/",
+    ".git/"
+  ]
+}

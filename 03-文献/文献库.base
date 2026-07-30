@@ -1,0 +1,57 @@
+filters:
+  and:
+    - 'file.inFolder("03-文献/文献笔记")'
+    - 'file.ext == "md"'
+    - 'type == "literature"'
+
+formulas:
+  priority_label: 'if(priority == 1, "核心", if(priority == 2, "重要", "补充"))'
+
+properties:
+  file.name:
+    displayName: "文献"
+  authors:
+    displayName: "作者"
+  year:
+    displayName: "年份"
+  topic:
+    displayName: "主题"
+  project_role:
+    displayName: "项目用途"
+  reading_status:
+    displayName: "阅读状态"
+  formula.priority_label:
+    displayName: "优先级"
+  doi:
+    displayName: "DOI"
+  file.mtime:
+    displayName: "最后修改"
+
+views:
+  - type: table
+    name: "核心文献"
+    filters:
+      and:
+        - 'priority <= 2'
+    groupBy:
+      property: priority
+      direction: ASC
+    order:
+      - file.name
+      - formula.priority_label
+      - project_role
+      - reading_status
+      - year
+
+  - type: table
+    name: "全部文献"
+    order:
+      - file.name
+      - authors
+      - year
+      - topic
+      - project_role
+      - reading_status
+      - formula.priority_label
+      - doi
+      - file.mtime

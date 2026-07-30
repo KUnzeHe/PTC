@@ -1,0 +1,30 @@
+# Normalize text files across Windows and other platforms.
+* text=auto
+
+.gitattributes text eol=lf
+.gitignore text eol=lf
+*.md text eol=lf whitespace=-blank-at-eol
+*.base text eol=lf
+*.json text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+*.toml text eol=lf
+*.py text eol=lf
+*.m text eol=lf
+*.ipynb text eol=lf
+*.csv text eol=lf
+*.tsv text eol=lf
+
+# Keep source literature out of normal Git object history.
+*.pdf filter=lfs diff=lfs merge=lfs -text
+
+# Common binary result formats.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.zip binary
+*.h5 binary
+*.hdf5 binary
+*.mat binary

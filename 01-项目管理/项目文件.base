@@ -1,0 +1,33 @@
+filters:
+  and:
+    - file.ext == "md"
+    - or:
+        - file.path == "PROJECT.md"
+        - file.path == "00-项目主页.md"
+        - file.inFolder("01-项目管理")
+properties:
+  file.name:
+    displayName: 文件
+  type:
+    displayName: 类型
+  document_role:
+    displayName: 作用
+  status:
+    displayName: 状态
+  version:
+    displayName: 版本
+  updated:
+    displayName: 更新日期
+  file.mtime:
+    displayName: 最后修改
+views:
+  - type: table
+    name: 项目文件
+    order:
+      - file.name
+      - type
+      - document_role
+      - status
+      - version
+      - updated
+      - file.mtime
