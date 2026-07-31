@@ -1,4 +1,4 @@
-"""Validate the propagation matrix of one constant-index temporal layer.
+"""Validate and expose the propagator of one constant-index temporal layer.
 
 The analytical propagation matrix is checked against a direct numerical
 integration of the Maxwell first-order system.  This file intentionally keeps
@@ -304,7 +304,7 @@ def plot_results(
 
     if output_path is None:
         output_path = Path(__file__).with_name(
-            "transition_matrix_validation.png"
+            "propagation_matrix_validation.png"
         )
     else:
         output_path = Path(output_path)
