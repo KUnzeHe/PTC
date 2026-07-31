@@ -9,5 +9,6 @@
     "tmp/",
     ".agents/",
     ".git/"
-  ]
+  ],
+  "readableLineLength": false
 }
