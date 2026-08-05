@@ -2,7 +2,7 @@
 title: 项目级记忆
 type: project-memory
 status: active
-updated: 2026-07-31
+updated: 2026-08-05
 tags:
   - project/memory
   - ptc
@@ -18,8 +18,8 @@ related:
 
 > 项目名称：手征光子时间晶体中的无序诱导时间拓扑相  
 > 英文工作题目：Disorder-Induced Temporal Topology in a Chiral Photonic Time Crystal  
-> 当前阶段：单层传播矩阵已通过验收，干净双层 PTC 的 $k$-gap 已完成复现  
-> 最近更新：2026-07-31
+> 当前阶段：干净 PTC–SSH 色散等价、winding number 和开边界零模已通过验收  
+> 最近更新：2026-08-05
 
 ## 1. 项目级结论
 
@@ -72,13 +72,13 @@ $$
 - 确定采用“理论推导—同步仿真”工作方式：每完成一层文献复现或本课题推导，就立即完成对应的最小数值实现、结果图和验收测试。
 - 已用 Python 实现单层时间传播矩阵，并通过行列式、前后互逆、均匀介质合并和独立 Maxwell ODE 对照；当前示例的最大归一化状态相对误差约为 $1.6\times10^{-11}$。
 - 已用 Yang Figure 1(c) 参数 $n_1=4,n_2=2,\bar t=1\,\mathrm{fs}$ 和周期矩阵 $M=P_2P_1$ 复现干净手征 PTC 色散及周期性 $k$-gap。
+- 已复现干净 PTC–SSH 色散等价、两种参数顺序的 winding number 和开边界谱；TMM–SSH 迹恒等式最大误差约为 $1.6\times10^{-15}$，$n_1>n_2$ 的有限链出现近零边界态，$n_1<n_2$ 时无中隙态。
 - 已将 `C:\Users\Lenovo\Desktop\PTC` 重构为唯一 Obsidian Vault，核心文档、文献、后续仿真和结果均在同一工作目录维护。
 - 已初始化以 `main` 为默认分支的 Git 仓库；Markdown、Bases、项目配置和后续代码进入版本控制，PDF 文献由 Git LFS 管理。
 
 ### 尚未完成
 
-- 除单层传播矩阵和干净 PTC $k$-gap 基准外，其余仿真模块尚未建立。
-- 尚未用代码复现干净 SSH 和 PTC–SSH 色散等价关系。
+- 任意手征保持无序的 $K,S,H_{\mathrm{eff}}$ 构造及其余无序仿真模块尚未建立。
 - 尚未验证有限无序链的相图、中隙态、统计收敛和完整 TMM/Maxwell 响应。
 - 尚未评估具体实验平台中的调制幅度、有限开关、色散和损耗。
 - 最终论文命名尚未确定；在真正随机无序得到完整证据前，不使用强表述 “temporal topological Anderson phase”。
@@ -400,10 +400,10 @@ $$
 
 ### 阶段 2：干净 PTC–SSH 复现
 
-- 复现干净 SSH 能带、winding number 和开边界零模。
-- 验证 $v>w$ 为平庸、$v<w$ 为拓扑。
-- 验证 SSH 色散与 PTC/TMM Floquet 色散一致。
-- 固化单位胞、边界终止、相位和归一化约定。
+- 已复现干净 SSH 能带、winding number 和开边界零模。
+- 已验证 $v>w$ 为平庸、$v<w$ 为拓扑。
+- 已验证 SSH 色散与 PTC/TMM Floquet 色散一致。
+- 已固化单位胞、边界终止和相位约定。
 
 ### 阶段 3：任意无序精确映射
 
@@ -432,7 +432,7 @@ $$
 
 ## 9. 计划代码结构
 
-当前采用 Python。`propagation_matrix.py` 是可导入的单层传播与验证模块，`propagation_matrix` 是对应的命令行入口；`clean_ptc_k_gap.py` 负责干净双层 PTC 色散、$k$-gap 和 $\cos(\Omega T)=\mathrm{Tr}(M)/2$ 判据图。后续模块仍按下面的职责划分逐步建立。
+当前采用 Python。`propagation_matrix.py` 是可导入的单层传播与验证模块，`propagation_matrix` 是对应的命令行入口；`clean_ptc_k_gap.py` 负责干净双层 PTC 色散与 $k$-gap；`clean_ptc_ssh_equivalence.py` 负责 TMM–SSH 坐标映射、逐点恒等式验收、winding number 和开边界谱。后续模块仍按下面的职责划分逐步建立。
 
 ```text
 04-仿真/
@@ -441,6 +441,8 @@ $$
   propagation_matrix_validation.png
   clean_ptc_k_gap.py
   clean_ptc_k_gap.png
+  clean_ptc_ssh_equivalence.py
+  clean_ptc_ssh_equivalence.png
   effective_ssh/
     clean_ssh
     disordered_mapping
@@ -478,9 +480,10 @@ $$
 ```powershell
 python "04-仿真\propagation_matrix"
 python "04-仿真\clean_ptc_k_gap.py"
+python "04-仿真\clean_ptc_ssh_equivalence.py"
 ```
 
-第一个入口运行单层传播矩阵基准并保留数值验收；第二个入口默认使用 Yang Figure 1(c) 参数，仅复现并保存干净 PTC 色散、$k$-gap 与 $\cos(\Omega T)=\mathrm{Tr}(M)/2$ 判据图。后续代码应形成固定顺序：
+第一个入口运行单层传播矩阵基准并保留数值验收；第二个入口默认使用 Yang Figure 1(c) 参数，仅复现并保存干净 PTC 色散、$k$-gap 与 $\cos(\Omega T)=\mathrm{Tr}(M)/2$ 判据图；第三个入口完成干净 PTC–SSH 色散等价、winding number 和开边界谱验收。后续代码应形成固定顺序：
 
 1. 运行干净 SSH 和干净 PTC 基准测试；
 2. 运行短链精确映射一致性测试；
