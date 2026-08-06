@@ -2,7 +2,7 @@
 title: 项目级记忆
 type: project-memory
 status: active
-updated: 2026-08-06
+updated: 2026-08-07
 tags:
   - project/memory
   - ptc
@@ -11,15 +11,15 @@ aliases:
   - 项目记忆
 related:
   - "[[01-项目管理/研究方案|研究方案]]"
-  - "[[02-理论基础/理论推导教程|理论推导教程]]"
+  - "[[理论推导|理论推导]]"
 ---
 
 # PROJECT.md
 
 > 项目名称：手征光子时间晶体中的无序诱导时间拓扑相  
 > 英文工作题目：Disorder-Induced Temporal Topology in a Chiral Photonic Time Crystal  
-> 当前阶段：干净 PTC–SSH 色散等价、winding number 和开边界零模已通过验收  
-> 最近更新：2026-08-06
+> 当前阶段：任意手征保持无序的精确 PTC–SSH 映射已通过短链数值验收  
+> 最近更新：2026-08-07
 
 ## 1. 项目级结论
 
@@ -73,12 +73,13 @@ $$
 - 已用 Python 实现单层时间传播矩阵，并通过行列式、前后互逆、均匀介质合并和独立 Maxwell ODE 对照；当前示例的最大归一化状态相对误差约为 $1.6\times10^{-11}$。
 - 已用 Yang Figure 1(c) 参数 $n_1=4,n_2=2,\bar t=1\,\mathrm{fs}$ 和周期矩阵 $M=P_2P_1$ 复现干净手征 PTC 色散及周期性 $k$-gap。
 - 已复现干净 PTC–SSH 色散等价、两种参数顺序的 winding number 和开边界谱；TMM–SSH 迹恒等式最大误差约为 $1.6\times10^{-15}$，$n_1>n_2$ 的有限链出现近零边界态，$n_1<n_2$ 时无中隙态。
+- 已用 8 单位胞随机正折射率链实现 $K,S,H_{\mathrm{eff}}$ 的精确构造和场还原；广义与标准本征值最大差约为 $6.7\times10^{-16}$，手征残差为数值零，成对谱误差约为 $2.8\times10^{-16}$，场还原误差约为 $1.8\times10^{-15}$。
 - 已将 `C:\Users\Lenovo\Desktop\PTC` 重构为唯一 Obsidian Vault，核心文档、文献、后续仿真和结果均在同一工作目录维护。
 - 已初始化以 `main` 为默认分支的 Git 仓库；Markdown、Bases、项目配置和后续代码进入版本控制，PDF 文献由 Git LFS 管理。
 
 ### 尚未完成
 
-- 任意手征保持无序的 $K,S,H_{\mathrm{eff}}$ 构造及其余无序仿真模块尚未建立。
+- 无序拓扑判据、准周期与随机相图等后续无序仿真模块尚未建立。
 - 尚未验证有限无序链的相图、中隙态、统计收敛和完整 TMM/Maxwell 响应。
 - 尚未评估具体实验平台中的调制幅度、有限开关、色散和损耗。
 - 最终论文命名尚未确定；在真正随机无序得到完整证据前，不使用强表述 “temporal topological Anderson phase”。
@@ -407,10 +408,10 @@ $$
 
 ### 阶段 3：任意无序精确映射
 
-- 从折射率序列构造 $K,S$ 和 $H_{\mathrm{eff}}$。
-- 验证 $H_{\mathrm{eff}}$ 实对称、零对角、最近邻和手征对称。
-- 用短随机链比较广义本征值与 $H_{\mathrm{eff}}$ 本征值。
-- 验证 $\psi_j=\sqrt{s_j}D_j$ 的场还原。
+- 已从折射率序列构造 $K,S$ 和 $H_{\mathrm{eff}}$。
+- 已验证 $H_{\mathrm{eff}}$ 实对称、零对角、最近邻和手征对称。
+- 已用短随机链验证广义本征值与 $H_{\mathrm{eff}}$ 本征值一致。
+- 已验证 $\psi_j=\sqrt{s_j}D_j$ 的场还原。
 
 ### 阶段 4：相图和有限链拓扑
 
@@ -432,7 +433,7 @@ $$
 
 ## 9. 计划代码结构
 
-当前采用 Python。`propagation_matrix.py` 是可导入的单层传播与验证模块，`propagation_matrix` 是对应的命令行入口；`clean_ptc_k_gap.py` 负责干净双层 PTC 色散与 $k$-gap；`clean_ptc_ssh_equivalence.py` 负责 TMM–SSH 坐标映射、逐点恒等式验收、winding number 和开边界谱。后续模块仍按下面的职责划分逐步建立。
+当前采用 Python。`propagation_matrix.py` 是可导入的单层传播与验证模块，`propagation_matrix` 是对应的命令行入口；`clean_ptc_k_gap.py` 负责干净双层 PTC 色散与 $k$-gap；`clean_ptc_ssh_equivalence.py` 负责 TMM–SSH 坐标映射、逐点恒等式验收、winding number 和开边界谱；`disordered_ptc_ssh_mapping.py` 负责短随机链的精确无序映射、数值验收、场还原，以及单个外部层扰动引起的相邻有效耦合变化。后续模块仍按下面的职责划分逐步建立。
 
 Python 命名以理论推导中的物理符号为准：使用 `k`、`P_j`、`Gamma`、`t_bar`、`n_j`、`tau_j` 等与公式对应的名称；带数字下标的量显式使用下划线，如 `n_1`、`tau_1`、`d_0`。非公式性程序量仍使用简洁的 `snake_case`，如 `allowed_mask`。真空基本常量保留 `C_0` 和 `ETA_0`。
 
@@ -445,6 +446,9 @@ Python 命名以理论推导中的物理符号为准：使用 `k`、`P_j`、`Gam
   clean_ptc_k_gap.png
   clean_ptc_ssh_equivalence.py
   clean_ptc_ssh_equivalence.png
+  disordered_ptc_ssh_mapping.py
+  disordered_ptc_ssh_mapping.png
+  disordered_ptc_ssh_mapping.npz
   effective_ssh/
     clean_ssh
     disordered_mapping
@@ -483,9 +487,10 @@ Python 命名以理论推导中的物理符号为准：使用 `k`、`P_j`、`Gam
 python "04-仿真\propagation_matrix"
 python "04-仿真\clean_ptc_k_gap.py"
 python "04-仿真\clean_ptc_ssh_equivalence.py"
+python "04-仿真\disordered_ptc_ssh_mapping.py"
 ```
 
-第一个入口运行单层传播矩阵基准并保留数值验收；第二个入口默认使用 Yang Figure 1(c) 参数，仅复现并保存干净 PTC 色散、$k$-gap 与 $\cos(\Omega T)=\mathrm{Tr}(M)/2$ 判据图；第三个入口完成干净 PTC–SSH 色散等价、winding number 和开边界谱验收。后续代码应形成固定顺序：
+第一个入口运行单层传播矩阵基准并保留数值验收；第二个入口默认使用 Yang Figure 1(c) 参数，仅复现并保存干净 PTC 色散、$k$-gap 与 $\cos(\Omega T)=\mathrm{Tr}(M)/2$ 判据图；第三个入口完成干净 PTC–SSH 色散等价、winding number 和开边界谱验收；第四个入口完成短随机链的 $K,S,H_{\mathrm{eff}}$ 构造、广义与标准本征值对照、手征和成对谱验收及物理电位移还原。后续代码应形成固定顺序：
 
 1. 运行干净 SSH 和干净 PTC 基准测试；
 2. 运行短链精确映射一致性测试；
