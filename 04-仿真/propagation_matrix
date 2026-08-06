@@ -3,5 +3,6 @@
 from propagation_matrix import main
 
 
+# Keep this file as the extension-free command-line entry point.
 if __name__ == "__main__":
     main()

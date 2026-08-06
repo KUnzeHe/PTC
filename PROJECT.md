@@ -2,7 +2,7 @@
 title: 项目级记忆
 type: project-memory
 status: active
-updated: 2026-08-05
+updated: 2026-08-06
 tags:
   - project/memory
   - ptc
@@ -19,7 +19,7 @@ related:
 > 项目名称：手征光子时间晶体中的无序诱导时间拓扑相  
 > 英文工作题目：Disorder-Induced Temporal Topology in a Chiral Photonic Time Crystal  
 > 当前阶段：干净 PTC–SSH 色散等价、winding number 和开边界零模已通过验收  
-> 最近更新：2026-08-05
+> 最近更新：2026-08-06
 
 ## 1. 项目级结论
 
@@ -28,7 +28,7 @@ related:
 目标证据链为：
 
 $$
-\{n_m,\tau_m\}
+\{n_j,\tau_j\}
 \longrightarrow
 \text{时间界面递推}
 \longrightarrow
@@ -114,10 +114,10 @@ $$
 1. 每个时间层满足
 
    $$
-   \frac{\tau_m}{n_m}=\bar t.
+   \frac{\tau_j}{n_j}=\bar t.
    $$
 
-2. 介质在目标频段内可视为无色散，$n_m$ 为实数。
+2. 介质在目标频段内可视为无色散，$n_j$ 为实数。
 3. 磁导率固定为 $\mu_0$。
 4. 时间界面足够快，可使用分段常数模型。
 5. 介质空间均匀，因此理想时间界面保持真实空间波矢 $k$。
@@ -186,9 +186,9 @@ $$
 令
 
 $$
-r_m=\frac{1}{n_m},
+r_j=\frac{1}{n_j},
 \qquad
-s_m=r_{m-1}+r_m.
+s_j=r_{j-1}+r_j.
 $$
 
 时间界面递推形成广义本征值问题
@@ -234,7 +234,7 @@ $$
 有效波函数还原为物理电位移时使用
 
 $$
-D(t_m)=u_m=\frac{\psi_m}{\sqrt{s_m}}.
+D(t_j)=u_j=\frac{\psi_j}{\sqrt{s_j}}.
 $$
 
 ### 6.3 无序拓扑判据
@@ -387,7 +387,7 @@ $$
 
 - 抽象 SSH 中直接设 $w_n=w_0+V\cos(2\pi\alpha n+\phi)$：从 $v_0>w_0$ 出发通常需 $V>2v_0$，并伴随近零键和符号变化，不作为首选物理 PTC 方案。
 - 两类时间层使用相同相对无序：其对数平均修正相消，主要作为已有拓扑态鲁棒性对照，通常不能诱导体相改变。
-- 只随机化 $n_m$ 而保持 $\tau_m$ 不变：会破坏 $\tau_m/n_m=\bar t$，仅作为手征破坏对照。
+- 只随机化 $n_j$ 而保持 $\tau_j$ 不变：会破坏 $\tau_j/n_j=\bar t$，仅作为手征破坏对照。
 
 ## 8. 数值工作流
 
@@ -410,7 +410,7 @@ $$
 - 从折射率序列构造 $K,S$ 和 $H_{\mathrm{eff}}$。
 - 验证 $H_{\mathrm{eff}}$ 实对称、零对角、最近邻和手征对称。
 - 用短随机链比较广义本征值与 $H_{\mathrm{eff}}$ 本征值。
-- 验证 $\psi_m=\sqrt{s_m}D_m$ 的场还原。
+- 验证 $\psi_j=\sqrt{s_j}D_j$ 的场还原。
 
 ### 阶段 4：相图和有限链拓扑
 
@@ -424,7 +424,7 @@ $$
 
 - 构造平庸区与无序诱导拓扑区的时间拼接。
 - 寻找 $\lambda\approx0$ 的谱界面态。
-- 用 $D_m=\psi_m/\sqrt{s_m}$ 与原始 TMM/Maxwell 场形比较。
+- 用 $D_j=\psi_j/\sqrt{s_j}$ 与原始 TMM/Maxwell 场形比较。
 - 单独计算因果输入场的未来演化、局域、增长、衰减和放大。
 - 完成随机统计、有限尺寸、必要对照和一种现实因素测试。
 
@@ -433,6 +433,8 @@ $$
 ## 9. 计划代码结构
 
 当前采用 Python。`propagation_matrix.py` 是可导入的单层传播与验证模块，`propagation_matrix` 是对应的命令行入口；`clean_ptc_k_gap.py` 负责干净双层 PTC 色散与 $k$-gap；`clean_ptc_ssh_equivalence.py` 负责 TMM–SSH 坐标映射、逐点恒等式验收、winding number 和开边界谱。后续模块仍按下面的职责划分逐步建立。
+
+Python 命名以理论推导中的物理符号为准：使用 `k`、`P_j`、`Gamma`、`t_bar`、`n_j`、`tau_j` 等与公式对应的名称；带数字下标的量显式使用下划线，如 `n_1`、`tau_1`、`d_0`。非公式性程序量仍使用简洁的 `snake_case`，如 `allowed_mask`。真空基本常量保留 `C_0` 和 `ETA_0`。
 
 ```text
 04-仿真/
@@ -545,7 +547,7 @@ python "04-仿真\clean_ptc_ssh_equivalence.py"
 - $\gamma_N$ 与折射率对数平均一致。
 - $\gamma_N$ 与扭曲边界 winding number 的标签一致。
 - 周期环中的望远镜边界项严格消失。
-- $D_m=\psi_m/\sqrt{s_m}$ 的场还原与原始方程一致。
+- $D_j=\psi_j/\sqrt{s_j}$ 的场还原与原始方程一致。
 - 时间界面处 $D,B$ 连续。
 - 短链传输矩阵与直接场演化一致。
 - 不同数值精度和时间步长下结果收敛。
@@ -606,7 +608,7 @@ IPR 增大、局域峰、放大、接近中隙的孤立态或弱无序下已有�
 
 - 不再把干净耦合公式逐胞套用于无序 PTC；
 - 不再把准周期胞间键调制作为物理 PTC 首选；
-- 主线使用外部时间层折射率调制，并同步调节持续时间以保持 $\tau_m/n_m=\bar t$；
+- 主线使用外部时间层折射率调制，并同步调节持续时间以保持 $\tau_j/n_j=\bar t$；
 - 相同相对无序被归类为鲁棒性对照，而不是诱导机制。
 
 后续每次出现以下长期变化时更新本文件：

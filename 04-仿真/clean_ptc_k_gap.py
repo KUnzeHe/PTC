@@ -13,47 +13,62 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 
-from propagation_matrix import C0, ETA0, P_j
+from propagation_matrix import C_0, ETA_0, P_j
 
 
-# Parameters from Yang et al. Figure 1(c)
-N1 = 4.0
-N2 = 2.0
-T_BAR = 1e-15  # tau_j / n_j, in seconds
-X_MAX = 5.2  # x = 2*k*c*T_BAR/pi
-NUM_K = 2001
+# Model parameters from Yang et al. Figure 1(c).
+n_1 = 4.0  # Refractive index of temporal layer 1.
+n_2 = 2.0  # Refractive index of temporal layer 2.
+t_bar = 1e-15  # tau_j / n_j, in seconds
+normalized_k_max = 5.2  # Upper bound of 2*k*c*t_bar/pi.
+num_k = 2001  # Number of k samples.
 
-OUTPUT_PATH = Path(__file__).with_name("clean_ptc_k_gap.png")
+output_path = Path(__file__).with_name("clean_ptc_k_gap.png")  # Saved figure.
 
 
 def calculate_dispersion():
-    """Calculate the Floquet dispersion from M(k) = P2(k) @ P1(k)."""
-    tau1 = N1 * T_BAR
-    tau2 = N2 * T_BAR
+    """Calculate the Floquet dispersion from M(k) = P_2(k) @ P_1(k)."""
+    # The chiral constraint fixes each layer duration.
+    tau_1 = n_1 * t_bar
+    tau_2 = n_2 * t_bar
 
-    x = np.linspace(0.0, X_MAX, NUM_K)
-    k = x * np.pi / (2.0 * C0 * T_BAR)
-    cos_omega_T = np.empty(NUM_K)
+    normalized_k_values = np.linspace(
+        0.0, normalized_k_max, num_k
+    )
+    k_values = normalized_k_values * np.pi / (2.0 * C_0 * t_bar)
+    cos_omega_t = np.empty(num_k)
 
-    for index, wavevector in enumerate(k):
-        p1 = P_j(wavevector, N1, tau1, C0, ETA0)
-        p2 = P_j(wavevector, N2, tau2, C0, ETA0)
-        period_matrix = p2 @ p1
-        cos_omega_T[index] = np.real(np.trace(period_matrix) / 2.0)
+    # Propagate through layers 1 and 2 in chronological order.
+    for index, k in enumerate(k_values):
+        P_1 = P_j(k, n_1, tau_1, C_0, ETA_0)
+        P_2 = P_j(k, n_2, tau_2, C_0, ETA_0)
+        period_matrix = P_2 @ P_1
+        cos_omega_t[index] = np.real(np.trace(period_matrix) / 2.0)
 
-    allowed = np.abs(cos_omega_T) <= 1.0
-    k_gap = ~allowed
+    # Real Floquet frequency exists only where |Tr(M)/2| <= 1.
+    allowed_mask = np.abs(cos_omega_t) <= 1.0
+    k_gap_mask = ~allowed_mask
 
-    frequency = np.full(NUM_K, np.nan)
-    frequency[allowed] = (
-        np.arccos(np.clip(cos_omega_T[allowed], -1.0, 1.0))
+    normalized_frequency = np.full(num_k, np.nan)
+    normalized_frequency[allowed_mask] = (
+        np.arccos(np.clip(cos_omega_t[allowed_mask], -1.0, 1.0))
         / (2.0 * np.pi)
     )
 
-    return x, frequency, cos_omega_T, k_gap
+    return (
+        normalized_k_values,
+        normalized_frequency,
+        cos_omega_t,
+        k_gap_mask,
+    )
 
 
-def plot_dispersion(x, frequency, cos_omega_T, k_gap):
+def plot_dispersion(
+    normalized_k_values,
+    normalized_frequency,
+    cos_omega_t,
+    k_gap_mask,
+):
     """Plot the dispersion and the corresponding cos(Omega T)."""
     figure, (dispersion_axis, cosine_axis) = plt.subplots(
         1,
@@ -63,52 +78,71 @@ def plot_dispersion(x, frequency, cos_omega_T, k_gap):
     )
 
     dispersion_axis.fill_between(
-        x,
+        normalized_k_values,
         -0.5,
         0.5,
-        where=k_gap,
+        where=k_gap_mask,
         color="lightgray",
         label=r"$k$-gap",
     )
-    dispersion_axis.plot(x, frequency, color="black", label="Allowed band")
-    dispersion_axis.plot(x, -frequency, color="black")
+    dispersion_axis.plot(
+        normalized_k_values,
+        normalized_frequency,
+        color="black",
+        label="Allowed band",
+    )
+    dispersion_axis.plot(
+        normalized_k_values,
+        -normalized_frequency,
+        color="black",
+    )
 
     dispersion_axis.set_xlabel(r"$2kc\bar{t}/\pi$")
     dispersion_axis.set_ylabel(r"$\Omega T/(2\pi)$")
-    dispersion_axis.set_xlim(0.0, X_MAX)
+    dispersion_axis.set_xlim(0.0, normalized_k_max)
     dispersion_axis.set_ylim(-0.52, 0.52)
     dispersion_axis.set_title(
-        rf"Clean PTC: $n_1={N1:g}$, $n_2={N2:g}$, "
-        rf"$\bar{{t}}={T_BAR/1e-15:g}$ fs"
+        rf"Clean PTC: $n_1={n_1:g}$, $n_2={n_2:g}$, "
+        rf"$\bar{{t}}={t_bar/1e-15:g}$ fs"
     )
     dispersion_axis.legend()
     dispersion_axis.grid(alpha=0.3)
 
     cosine_axis.fill_between(
-        x,
-        np.min(cos_omega_T),
-        np.max(cos_omega_T),
-        where=k_gap,
+        normalized_k_values,
+        np.min(cos_omega_t),
+        np.max(cos_omega_t),
+        where=k_gap_mask,
         color="lightgray",
     )
-    cosine_axis.plot(x, cos_omega_T, color="black")
+    cosine_axis.plot(normalized_k_values, cos_omega_t, color="black")
     cosine_axis.axhline(1.0, color="gray", linestyle="--")
     cosine_axis.axhline(-1.0, color="gray", linestyle="--")
     cosine_axis.set_xlabel(r"$2kc\bar{t}/\pi$")
     cosine_axis.set_ylabel(r"$\cos(\Omega T)$")
-    cosine_axis.set_xlim(0.0, X_MAX)
+    cosine_axis.set_xlim(0.0, normalized_k_max)
     cosine_axis.set_title(r"$\cos(\Omega T)=\mathrm{Tr}(M)/2$")
     cosine_axis.grid(alpha=0.3)
 
     figure.tight_layout()
-    figure.savefig(OUTPUT_PATH, dpi=160)
+    figure.savefig(output_path, dpi=160)
     plt.close(figure)
 
 
 def main():
-    x, frequency, cos_omega_T, k_gap = calculate_dispersion()
-    plot_dispersion(x, frequency, cos_omega_T, k_gap)
-    print(f"Figure: {OUTPUT_PATH.resolve()}")
+    (
+        normalized_k_values,
+        normalized_frequency,
+        cos_omega_t,
+        k_gap_mask,
+    ) = calculate_dispersion()
+    plot_dispersion(
+        normalized_k_values,
+        normalized_frequency,
+        cos_omega_t,
+        k_gap_mask,
+    )
+    print(f"Figure: {output_path.resolve()}")
 
 
 if __name__ == "__main__":
